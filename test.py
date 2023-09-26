@@ -1,38 +1,47 @@
 #Create user
 
-import requests
-import json
 
-okta_url = 'https://dev-37647126.okta.com/oauth2/default'
+import asyncio
+from okta.client import Client as OktaClient
+from okta import models
+
+
+
+okta_url = 'https://dev-37647126.okta.com'
 api_token = 'a00ufe3Yd42h_W1tG42vuvKoTHK6z7U9YQPqX8kf9zq'
-
-headers = {
-    'Accept': 'application/json',
-    'Content-Type': 'application/json',
-    'Authorization': f'SSWS {api_token}'
+config = {
+    'orgUrl': okta_url,
+    'token': api_token
 }
 
-user_data = {
-    'profile': {
-        'firstName': 'John',
-        'lastName': 'Doe',
-        'email': 'john@email.com',
-        'login': 'john@email.com'
-    },
-    'credentials': {
-        'password': {
-            'value': 'P@ssw0rd'
-        }
-    }
-}
+# Create Password
+password = models.PasswordCredential({
+    'value': 'Password!123'
+})
 
-url = f'{okta_url}/api/v1/users'
+# Create User Credentials
+user_creds = models.UserCredentials({
+    'password': password
+})
 
-response = requests.post(url, headers=headers, data=json.dumps(user_data))
-if response.status_code == 200:
-    new_user = json.loads(response.text)
-    print(f"User {new_user['profile']['login']} created in Okta")
-else:
-    print("Failed to create user in Okta")
-    
-print(response.text)
+# Create User Profile and CreateUser Request
+user_profile = models.UserProfile()
+user_profile.first_name = 'Omid'
+user_profile.last_name = 'Raha'
+user_profile.email = 'omid@example.com'
+user_profile.login = 'omid@example.com'
+
+create_user_request = models.CreateUserRequest({
+    'credentials': user_creds,
+    'profile': user_profile
+})
+
+
+async def main():
+    async with OktaClient(config) as client:
+        res = await client.create_user(create_user_request, {'activate': True, })
+        print('User created, info: {}'.format(res))
+
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
