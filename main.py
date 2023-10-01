@@ -1,7 +1,6 @@
 import json
-from fastapi import Body, Depends, FastAPI, HTTPException, Request
+from fastapi import  Depends, FastAPI, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-import httpx
 import requests
 from starlette.config import Config
 from schema.schema import User
