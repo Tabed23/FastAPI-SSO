@@ -1,13 +1,17 @@
+from datetime import timedelta
+import datetime
 import json
-from fastapi import  Body, Depends, FastAPI, HTTPException, Request
+from fastapi import  Body, Depends, FastAPI, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError
 import requests
 from starlette.config import Config
 from schema.schema import User
 from utils.validate import retrieve_token, validate_remotely
 from okta.client import Client as OktaClient
 from fastapi import Path
-
+import jwt
+from datetime import datetime, timedelta
 
 config = Config(".env")
 
@@ -278,3 +282,60 @@ def change_password(user_id: str = Path(..., title="User ID"), password_data: di
             status_code=response.status_code,
             detail="Failed to change user's password in Okta"
         )
+        
+
+
+
+
+# JWT authentication Section
+
+# Secret key for encoding and decoding JWT tokens
+SECRET_KEY = "your-secret-key"
+ALGORITHM = "HS256"
+
+
+# Function to generate JWT token
+def create_jwt_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)  # Default expiration time
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# Function to decode JWT token
+def decode_jwt_token(token: str):
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return decoded_token
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
+# Endpoint to generate JWT token
+@app.post("/getjwttoken")
+async def login(user: User):
+    saved_user_data = {
+            "firstName": user.first_name,
+            "lastName": user.last_name,
+            "email": user.email,
+            "password": user.password,
+    }
+
+    access_token = create_jwt_token(saved_user_data)
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/protected")
+def protected_route(token: str = Depends(oauth2_scheme)):
+    decoded_token = decode_jwt_token(token)
+    return {"message": "Access granted", "user": decoded_token}
