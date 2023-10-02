@@ -4,3 +4,5 @@ httpx
 okta_jwt
 typing_extensions==4.7.1
 pysaml2
+okta_jwt_verifier
+python-multipart

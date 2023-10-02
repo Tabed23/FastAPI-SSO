@@ -1,5 +1,5 @@
 import json
-from fastapi import  Depends, FastAPI, HTTPException, Request
+from fastapi import  Body, Depends, FastAPI, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import requests
 from starlette.config import Config
@@ -23,7 +23,7 @@ client_screat = config("OKTA_CLIENT_SECRET")
 
 okta_client_config = {"orgUrl": okta_url, "token": api_token}
 okta_client = OktaClient(okta_client_config)
-
+redirect_uri = 'http://localhost:8000/implicit/callback'
 headers = {
     "Accept": "application/json",
     "Content-Type": "application/json",
@@ -189,3 +189,29 @@ def get_user_info(valid: bool = Depends(validate)):
             raise HTTPException(
                 status_code=response.status_code, detail="Failed to get user info"
             )
+            
+            
+@app.post('/login/user')
+def login(login_data: dict = Body(...)):
+    username = login_data.get("username")
+    password = login_data.get("password")
+    authn_response = requests.post(
+            f'{okta_url}/api/v1/authn',
+            headers={'Accept': 'application/json', 'Content-Type': 'application/json'},
+            json={'username': username, 'password': password}
+            )
+    authn_data = authn_response.json()
+
+        # Send the session token as a query param in a GET request to the authorize API
+    authorize_url = (
+            f'{okta_url}/oauth2/default/v1/authorize?'
+            f'response_type=token&'
+            f'scope=openid&'
+            f'state=TEST&'
+            f'nonce=TEST&'
+            f'client_id={client_id}&'
+            f'redirect_uri={redirect_uri}&'
+            f'sessionToken={authn_data["sessionToken"]}'
+        )
+
+    return {'authorize_url': authorize_url}
