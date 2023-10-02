@@ -215,3 +215,66 @@ def login(login_data: dict = Body(...)):
         )
 
     return {'authorize_url': authorize_url}
+
+
+
+@app.post("/create_user")
+def create_user(user_data: dict = Body(...)):
+        # Define the request body for creating a new user in Okta
+    okta_user_data = {
+        "profile": {
+            "firstName": user_data["profile"]["firstName"],
+            "lastName": user_data["profile"]["lastName"],
+            "email": user_data["profile"]["email"],
+            "login": user_data["profile"]["login"]
+        },
+        "credentials": {
+            "password": {"value": user_data["credentials"]["password"]["value"]},
+            "recovery_question": {
+                "question": user_data["credentials"]["recovery_question"]["question"],
+                "answer": user_data["credentials"]["recovery_question"]["answer"]
+            }
+        }
+    }
+    
+    # Send a POST request to create the user in Okta
+    response = requests.post(
+        f"{okta_url}/api/v1/users?activate=false",
+        headers=headers,
+        json=okta_user_data
+    )
+
+    if response.status_code == 200:
+        return {"message": "User created successfully"}
+    else:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail="Failed to create user in Okta"
+        )
+        
+
+
+
+
+@app.post("/change_password/{user_id}")
+def change_password(user_id: str = Path(..., title="User ID"), password_data: dict = Body(...)):
+    # Define the request body for changing user's password in Okta
+    okta_password_data = {
+        "oldPassword": {"value": password_data["oldPassword"]["value"]},
+        "newPassword": {"value": password_data["newPassword"]["value"]}
+    }
+    
+    # Send a PUT request to change the user's password in Okta
+    response = requests.post(
+        f"{okta_url}/api/v1/users/{user_id}/credentials/change_password",
+        headers=headers,
+        json=okta_password_data
+    )
+
+    if response.status_code == 200:
+        return {"message": "Password changed successfully"}
+    else:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail="Failed to change user's password in Okta"
+        )
